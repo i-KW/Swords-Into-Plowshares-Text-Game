@@ -1,0 +1,1172 @@
+<!DOCTYPE html> 
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>太平年 - 文字冒险游戏</title>
+    <style>
+        /* 全局样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "楷体", "华文楷体", "SimKai", "宋体", "SimSun", sans-serif;
+            /* 隐藏默认鼠标指针 */
+            cursor: none;
+            /* 移除全局字号加大，改为默认100% */
+            font-size: 100%;
+        }
+        /* 自定义鼠标指针 - 剑型（用三角形模拟剑头，可替换为图片） */
+        .custom-cursor {
+            position: fixed;
+            width: 30px;
+            height: 30px;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 30px solid #e2c4b4; /* 剑色与按钮一致 */
+            transform: translate(-50%, -100%) rotate(180deg);
+            pointer-events: none; /* 不阻挡点击 */
+            z-index: 9999;
+            transition: transform 0.1s ease;
+        }
+        /* 粒子拖尾样式 */
+        .particle {
+            position: fixed;
+            width: 6px;
+            height: 6px;
+            background-color: #8b5a2b;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0.8;
+            transition: all 0.6s ease-out;
+        }
+        /* 数值飘字样式 */
+        .stat-float {
+            position: absolute;
+            color: #D4AF37; /* 金色 */
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000; /* 黑金效果 */
+            pointer-events: none;
+            z-index: 10000;
+            animation: floatUp 1s ease-out forwards;
+            font-size: 1em; /* 正常字号 */
+        }
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+        }
+        body {
+            background-color: #f5e9d8;
+            color: #332718;
+            padding: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+            line-height: 1.8;
+            position: relative;
+            overflow-x: hidden;
+        }
+        .page {
+            display: none;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        .page.active {
+            display: block;
+        }
+        /* 按钮样式 - 确保层级和可点击 */
+        .btn {
+            background-color: #8b5a2b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: none; /* 隐藏默认指针 */
+            margin: 10px 5px;
+            font-size: 16px; /* 固定正常字号 */
+            transition: all 0.2s ease;
+            position: relative;
+            z-index: 99; /* 大幅提升层级，避免遮挡 */
+        }
+        .btn:hover {
+            background-color: #6d4421;
+            transform: scale(1.02);
+        }
+        /* 标题样式 */
+        h1 {
+            text-align: center;
+            color: #8b5a2b;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #8b5a2b;
+            padding-bottom: 10px;
+            font-size: 24px; /* 标题固定正常字号 */
+        }
+        h2 {
+            color: #6d4421;
+            margin: 20px 0 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 20px; /* 二级标题固定正常字号 */
+        }
+        .desc {
+            margin: 15px 0;
+            font-size: 16px; /* 剧情文本固定正常字号 */
+            line-height: 1.8;
+            white-space: pre-line; /* 支持换行符显示 */
+        }
+        /* 开场页和结局页文字样式：单独加大字号、加粗、黑金色 */
+        #start-page .desc, #end-page .desc {
+            font-size: 20px; /* 固定加大后的字号，不再叠加全局 */
+            font-weight: bold;
+            color: #2B2B2B; /* 黑金的黑色基底 */
+            text-shadow: 0 0 2px #D4AF37, 0 0 5px #D4AF37; /* 金色描边效果 */
+        }
+        /* 势力logo样式 */
+        .power-logo {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        /* 兜底文字logo样式 */
+        .text-logo {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px; /* 固定正常字号 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .logo-wuyue { background-color: #1E88E5; } /* 吴越蓝 */
+        .logo-houzhou { background-color: #E53935; } /* 后周红 */
+        .logo-beisong { background-color: #FFC107; } /* 北宋黄 */
+        /* 角色选择页样式 */
+        .lord-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            background-color: #f8f0e3;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            transition: box-shadow 0.3s ease;
+        }
+        .lord-card:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+        .lord-card-avatar {
+            width: 120px;
+            height: 160px;
+            border: 3px solid #8b5a2b;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        .lord-card-info {
+            flex: 1;
+        }
+        /* 游戏页数值面板 - 明确设置正常字号 */
+        .stat-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+            font-size: 16px; /* 数值面板基础字号 */
+        }
+        .avatar-logo-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .lord-avatar {
+            width: 150px;
+            height: 200px;
+            border: 3px solid #8b5a2b;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        .stat-bars {
+            flex: 1;
+            min-width: 300px;
+        }
+        .stat-item {
+            margin: 10px 0;
+        }
+        .stat-label {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 16px; /* 数值标签固定正常字号 */
+        }
+        .bar-bg {
+            width: 100%;
+            height: 20px;
+            background-color: #eee;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+        .minxin-bar { background-color: #4CAF50; } /* 民心绿 */
+        .bingli-bar { background-color: #f44336; } /* 兵力红 */
+        .tili-bar { background-color: #2196F3; } /* 体力蓝 */
+        /* 选项按钮 */
+        .option-btn {
+            display: block;
+            width: 100%;
+            text-align: left;
+            margin: 10px 0;
+            padding: 12px 15px;
+        }
+        /* 剧情提示 - 明确设置正常字号 */
+        .story-tip {
+            color: #8b5a2b;
+            font-style: italic;
+            margin: 10px 0;
+            white-space: pre-line;
+            font-size: 16px; /* 剧情提示固定正常字号 */
+        }
+        /* 打字机光标 */
+        .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 18px;
+            background-color: #332718;
+            margin-left: 2px;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        
+        /* ========== 新增：五代十国地图样式 ========== */
+        .dynasties-map {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            margin: 20px auto;
+            display: block;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            /* 淡入淡出动画 */
+            animation: fadeInOut 8s ease-in-out infinite;
+        }
+        
+        /* 淡入淡出关键帧动画 */
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        
+        /* ========== 新增：开场页按钮居中样式 ========== */
+        .start-btn-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 自定义鼠标指针元素 -->
+    <div class="custom-cursor"></div>
+    
+    <!-- 音效 - 替换为指定打字机音效 -->
+    <audio id="clickSound" preload="auto">
+        <source src="mixkit-hard-typewriter-click-1119.wav" type="audio/wav">
+        <!-- 备用源，防止主源失效 -->
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3" type="audio/mpeg">
+    </audio>
+    
+    <!-- 1. 开场页 -->
+    <div id="start-page" class="page active">
+        <h1>太平年之五代十国 · 文字冒险游戏</h1>
+        
+        <!-- ========== 新增：五代十国地图图片 ========== -->
+        <!-- 请将 src 替换为你实际的地图图片路径 -->
+        <img src="five_dynasties_map.jpg" alt="五代十国地图" class="dynasties-map" 
+             onerror="this.src='https://picsum.photos/800/500?grayscale'; this.alt='五代十国地图占位图';">
+        
+        <!-- 改为空容器，通过打字机填充 -->
+        <div id="start-desc" class="desc"></div>
+        
+        <!-- ========== 修改：按钮容器（实现居中） ========== -->
+        <div class="start-btn-container">
+            <button class="btn" onclick="playClickSound(); switchPage('select-page')">开始游戏</button>
+        </div>
+    </div>
+
+    <!-- 2. 主公选择页 -->
+    <div id="select-page" class="page">
+        <h1>选择你的主公</h1>
+        
+        <!-- 钱弘俶 -->
+        <div class="lord-card">
+            <img class="lord-card-avatar" src="qian.png" alt="钱弘俶头像" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+            <div class="lord-card-info">
+                <h2>
+                    <img class="power-logo" src="wuyue_logo.png" alt="吴越logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                    <div class="text-logo logo-wuyue" style="display:none;">吴越</div>
+                    钱弘俶（保境安民）
+                </h2>
+                <div class="desc">
+                    吴越末代君主，化名钱九郎，早年闲散渔猎，被胡进思拥立为王后，从潇洒王孙成长为心系苍生的明君。
+                    奉行“保境安民”国策，与孙太真伉俪情深，为其修建雷峰塔祈福，最终以王位换江南百姓免遭战火，纳土归宋。
+                    初始数值：民心80，兵力50，体力70
+                </div>
+                <button class="btn" onclick="playClickSound(); selectLord('qian')">选择钱弘俶</button>
+            </div>
+        </div>
+
+        <!-- 赵匡胤 -->
+        <div class="lord-card">
+            <img class="lord-card-avatar" src="zhao.png" alt="赵匡胤头像" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+            <div class="lord-card-info">
+                <h2>
+                    <img class="power-logo" src="beisong_logo.png" alt="北宋logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                    <div class="text-logo logo-beisong" style="display:none;">北宋</div>
+                    赵匡胤（逐鹿中原）
+                </h2>
+                <div class="desc">
+                    北宋开国皇帝，早年为后周将领，魁梧勇猛，与钱弘俶不打不相识结下友谊。
+                    郭荣病重后，幼主临朝，赵匡胤在陈桥驿被将士拥立，黄袍加身建立北宋，胸怀统一天下之志，终结五代乱世。
+                    初始数值：民心60，兵力90，体力80
+                </div>
+                <button class="btn" onclick="playClickSound(); selectLord('zhao')">选择赵匡胤</button>
+            </div>
+        </div>
+
+        <!-- 郭荣 -->
+        <div class="lord-card">
+            <img class="lord-card-avatar" src="guo.png" alt="郭荣头像" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+            <div class="lord-card-info">
+                <h2>
+                    <img class="power-logo" src="houzhou_logo.png" alt="后周logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                    <div class="text-logo logo-houzhou" style="display:none;">后周</div>
+                    郭荣（北伐拓土）
+                </h2>
+                <div class="desc">
+                    后周世宗，郭威养子，励精图治，整顿禁军，改革内政，南征北战奠定统一基业。
+                    北伐契丹时收复三关三州，兵锋直指幽州，却因重病被迫班师，英年早逝，是乱世中极具惋惜的明君。
+                    初始数值：民心70，兵力80，体力60
+                </div>
+                <button class="btn" onclick="playClickSound(); selectLord('guo')">选择郭荣</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 游戏主页面 -->
+    <div id="game-page" class="page">
+        <h1 id="lord-title">主公：钱弘俶</h1>
+        <div class="stat-container">
+            <div class="avatar-logo-wrapper">
+                <img id="lord-avatar-img" class="lord-avatar" src="" alt="主公头像" >
+                <img id="power-logo-img" class="power-logo" src="" alt="势力logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                <div id="text-logo-container" class="text-logo" style="display:none;"></div>
+            </div>
+            
+            <div class="stat-bars">
+                <div class="stat-item">
+                    <div class="stat-label">
+                        <span>民心</span>
+                        <span id="minxin-text">80/100</span>
+                    </div>
+                    <div class="bar-bg">
+                        <div id="minxin-bar" class="bar-fill minxin-bar" style="width: 80%;"></div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">
+                        <span>兵力</span>
+                        <span id="bingli-text">50/100</span>
+                    </div>
+                    <div class="bar-bg">
+                        <div id="bingli-bar" class="bar-fill bingli-bar" style="width: 50%;"></div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">
+                        <span>体力</span>
+                        <span id="tili-text">70/100</span>
+                    </div>
+                    <div class="bar-bg">
+                        <div id="tili-bar" class="bar-fill tili-bar" style="width: 70%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="story-text" class="desc"></div>
+        <div id="story-tip" class="story-tip"></div>
+        <div id="option-area"></div>
+    </div>
+
+    <!-- 4. 结局页面 -->
+    <div id="end-page" class="page">
+        <h1 id="end-title">结局：江南太平</h1>
+        <div id="end-text" class="desc"></div>
+        <button class="btn" onclick="playClickSound(); restartGame()">重新开始</button>
+    </div>
+
+    <script>
+        // 全局变量
+        let currentLord = '';
+        let stats = { minxin: 0, bingli: 0, tili: 0 };
+        let storyStage = 1;
+        let isTyping = false;
+        const clickSound = document.getElementById('clickSound');
+        const typingSpeed = 20; // 降低打字速度，提升阅读体验
+        const cursor = document.querySelector('.custom-cursor');
+        let particles = [];
+        let particleCount = 0;
+        const maxParticles = 20; // 限制粒子数量，避免性能问题
+
+        // 初始化：页面加载完成后触发开始页打字机效果
+        window.addEventListener('DOMContentLoaded', () => {
+            initStartPageText();
+            initCustomCursor();
+        });
+
+        // 初始化开始页文字并触发打字机
+        function initStartPageText() {
+            const startText = `五代十国，乱世纷争，中原板荡，江南偏安。
+吴越钱氏保境安民，后周郭荣北伐拓土，宋祖匡胤黄袍加身……
+《太平年》的故事，就发生在这风云变幻的年代。
+你将化身一方主公，在乱世中做出抉择：是保境安民，还是逐鹿中原？是坚守一方，还是纳土归宋？
+你的每一个选择，都将决定自己与天下的命运。`;
+            typeWriter('start-desc', startText);
+        }
+
+        // 初始化自定义鼠标指针和粒子拖尾
+        function initCustomCursor() {
+            // 鼠标移动跟随
+            document.addEventListener('mousemove', (e) => {
+                // 更新自定义指针位置
+                cursor.style.left = `${e.clientX}px`;
+                cursor.style.top = `${e.clientY}px`;
+                
+                // 创建粒子拖尾
+                createParticle(e.clientX, e.clientY);
+            });
+
+            // 鼠标点击时指针缩放效果
+            document.addEventListener('mousedown', () => {
+                cursor.style.transform = 'translate(-50%, -100%) rotate(180deg) scale(0.8)';
+            });
+            document.addEventListener('mouseup', () => {
+                cursor.style.transform = 'translate(-50%, -100%) rotate(180deg) scale(1)';
+            });
+        }
+
+        // 创建拖尾粒子
+        function createParticle(x, y) {
+            if (particleCount >= maxParticles) return;
+            
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            // 随机偏移，营造拖尾效果
+            const offsetX = (Math.random() - 0.5) * 20;
+            const offsetY = (Math.random() - 0.5) * 20;
+            particle.style.left = `${x + offsetX}px`;
+            particle.style.top = `${y + offsetY}px`;
+            
+            // 随机大小和透明度
+            const size = Math.random() * 4 + 2;
+            particle.style.width = `${size}px`;
+            particle.style.height = `${size}px`;
+            particle.style.opacity = Math.random() * 0.8 + 0.2;
+            
+            // 随机颜色（与主题色匹配）
+            const colors = ['#8b5a2b', '#6d4421', '#a67c52'];
+            particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            document.body.appendChild(particle);
+            particles.push(particle);
+            particleCount++;
+            
+            // 粒子动画和销毁
+            setTimeout(() => {
+                particle.style.opacity = 0;
+                particle.style.transform = `translate(${Math.random() * 30 - 15}px, ${Math.random() * 30 - 15}px) scale(0)`;
+                
+                setTimeout(() => {
+                    document.body.removeChild(particle);
+                    particles = particles.filter(p => p !== particle);
+                    particleCount--;
+                }, 600);
+            }, 10);
+        }
+
+        // 播放点击音效（替换为指定音效）
+        function playClickSound() {
+            clickSound.currentTime = 0;
+            clickSound.play().catch(err => console.log("音效播放失败：", err));
+        }
+
+        // 打字机效果（稳定版，支持开始页/结局页）
+        function typeWriter(elementId, text, callback = null) {
+            if (isTyping) return;
+            isTyping = true;
+            const element = document.getElementById(elementId);
+            if (!element) {
+                isTyping = false;
+                callback && callback();
+                return;
+            }
+            
+            element.innerHTML = '';
+            let i = 0;
+            const cursor = document.createElement('span');
+            cursor.className = 'typing-cursor';
+            element.appendChild(cursor);
+
+            function typeChar() {
+                try {
+                    if (i < text.length) {
+                        let char = text.charAt(i);
+                        if (char === '\n') {
+                            element.innerHTML = element.innerHTML.replace(/<span class="typing-cursor"><\/span>$/, '<br>');
+                        } else {
+                            element.innerHTML = element.innerHTML.replace(/<span class="typing-cursor"><\/span>$/, char);
+                        }
+                        element.appendChild(cursor);
+                        i++;
+                        setTimeout(typeChar, typingSpeed);
+                    } else {
+                        cursor.remove();
+                        isTyping = false;
+                        callback && callback();
+                    }
+                } catch (e) {
+                    console.error("打字机错误：", e);
+                    cursor.remove();
+                    isTyping = false;
+                    callback && callback();
+                }
+            }
+            typeChar();
+        }
+
+        // 切换页面
+        function switchPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            const target = document.getElementById(pageId);
+            if (target) {
+                target.classList.add('active');
+                // 如果是开始页，重新触发打字机
+                if (pageId === 'start-page') {
+                    initStartPageText();
+                }
+            }
+        }
+
+        // 选择主公（初始化）
+        function selectLord(lordType) {
+            currentLord = lordType;
+            storyStage = 1;
+            isTyping = false;
+
+            // 初始化数值和信息
+            if (lordType === 'qian') {
+                stats = { minxin: 80, bingli: 50, tili: 70 };
+                document.getElementById('lord-title').textContent = '主公：钱弘俶（吴越王）';
+                document.getElementById('lord-avatar-img').src = 'qian.png';
+                document.getElementById('power-logo-img').src = 'wuyue_logo.png';
+                document.getElementById('text-logo-container').className = 'text-logo logo-wuyue';
+                document.getElementById('text-logo-container').textContent = '吴越';
+                
+                // 初始剧情
+                const story = `显德六年（959年），你身为吴越王钱弘俶（钱九郎），坐镇杭州，此时后周郭荣北伐契丹大胜，中原局势骤变。
+近日朝堂暗流涌动：权臣胡进思手握禁军，多次进言让你扩军备战，称“中原乱局，正是吴越扩张之机”；
+而忠臣水丘昭券则劝你“保境安民，勿轻启战端”；孙太真更是私下告诉你，江南百姓刚经历丰收，不愿再起战事。
+探子还带来消息：赵匡胤已升任后周殿前都点检，掌控禁军主力，对吴越态度不明。`;
+                const tip = '【剧情提示】胡进思是拥立你为王的功臣，但近年愈发跋扈，需小心制衡。';
+                
+                typeWriter('story-text', story, () => {
+                    typeWriter('story-tip', tip, () => {
+                        updateOptions([
+                            '采纳胡进思建议，在杭州、苏州扩军（兵力+20，民心-10）',
+                            '听水丘昭券之言，减免江南赋税，安抚百姓（民心+20，兵力-10）',
+                            '与孙太真商议，派崔仁冀为使者前往汴京，试探郭荣与赵匡胤的态度（体力-5）',
+                            '微服私访杭州城，亲察民生（体力-10，民心+15）'
+                        ]);
+                    });
+                });
+            } else if (lordType === 'zhao') {
+                stats = { minxin: 60, bingli: 90, tili: 80 };
+                document.getElementById('lord-title').textContent = '主公：赵匡胤（后周殿前都点检）';
+                document.getElementById('lord-avatar-img').src = 'zhao.png';
+                document.getElementById('power-logo-img').src = 'beisong_logo.png';
+                document.getElementById('text-logo-container').className = 'text-logo logo-beisong';
+                document.getElementById('text-logo-container').textContent = '北宋';
+                
+                const story = `显德六年（959年），你身为后周殿前都点检赵匡胤，刚随郭荣北伐契丹，收复三关三州，班师回朝后，郭荣却重病缠身。
+幼主柴宗训年仅七岁，符太后临朝，朝局由范质、王溥等文臣把持，对你多有猜忌。
+手下石守信、高怀德等将领私下劝你：“主少国疑，不如取而代之，免落韩信之祸”；
+而老臣冯道则登门告诫你：“恪尽臣节，方为乱世正道，吴越钱弘俶亦在观望，勿轻举妄动。”`;
+                const tip = '【剧情提示】郭荣对你有知遇之恩，但手下将士多愿拥你称帝，抉择关乎后周命运。';
+                
+                typeWriter('story-text', story, () => {
+                    typeWriter('story-tip', tip, () => {
+                        updateOptions([
+                            '默许石守信等人筹备兵变，暗中联络京中禁军（兵力+15，民心-5）',
+                            '面见符太后，交出部分兵权以示忠心（民心+10，兵力-20）',
+                            '派使者前往杭州，与钱弘俶结盟（体力-5，兵力+5）',
+                            '拜访冯道，请教乱世立身之策（体力-5，民心+10）'
+                        ]);
+                    });
+                });
+            } else if (lordType === 'guo') {
+                stats = { minxin: 70, bingli: 80, tili: 60 };
+                document.getElementById('lord-title').textContent = '主公：郭荣（后周世宗）';
+                document.getElementById('lord-avatar-img').src = 'guo.png';
+                document.getElementById('power-logo-img').src = 'houzhou_logo.png';
+                document.getElementById('text-logo-container').className = 'text-logo logo-houzhou';
+                document.getElementById('text-logo-container').textContent = '后周';
+                
+                const story = `显德六年（959年），你身为后周世宗郭荣，亲率大军北伐契丹，仅用四十二天便收复瀛、莫、易三州及瓦桥、益津、淤口三关。
+正当你准备直取幽州，完成统一北方的大业时，突发重病，随军太医多次劝谏你班师回朝；
+将领赵匡胤请命“愿率前锋继续北伐，为陛下扫清障碍”；
+而宰相范质则快马送来急报：“吴越钱弘俶遣使求见，愿与后周结盟，共抗契丹，但需后周承诺不攻吴越。”`;
+                const tip = '【剧情提示】你的身体已支撑不住，但北伐功亏一篑，心有不甘，需在江山与身体间抉择。';
+                
+                typeWriter('story-text', story, () => {
+                    typeWriter('story-tip', tip, () => {
+                        updateOptions([
+                            '拒绝班师，强撑病体继续指挥北伐（体力-20，兵力+15）',
+                            '听从太医建议，班师回开封休养（体力+10，兵力-5，民心+5）',
+                            '接见吴越使者，答应结盟条件（民心+10，兵力+5）',
+                            '召赵匡胤密谈，试探其忠心（体力-5，兵力+5）'
+                        ]);
+                    });
+                });
+            }
+
+            updateStats();
+            switchPage('game-page');
+        }
+
+        // 更新数值面板
+        function updateStats() {
+            // 限制数值在0-100之间
+            stats.minxin = Math.max(0, Math.min(100, stats.minxin));
+            stats.bingli = Math.max(0, Math.min(100, stats.bingli));
+            stats.tili = Math.max(0, Math.min(100, stats.tili));
+
+            // 更新文本
+            document.getElementById('minxin-text').textContent = `${stats.minxin}/100`;
+            document.getElementById('bingli-text').textContent = `${stats.bingli}/100`;
+            document.getElementById('tili-text').textContent = `${stats.tili}/100`;
+
+            // 更新进度条
+            document.getElementById('minxin-bar').style.width = `${stats.minxin}%`;
+            document.getElementById('bingli-bar').style.width = `${stats.bingli}%`;
+            document.getElementById('tili-bar').style.width = `${stats.tili}%`;
+        }
+
+        // 更新选项按钮（核心修复：确保每个按钮都有独立绑定）
+        function updateOptions(optionTexts) {
+            const optionArea = document.getElementById('option-area');
+            if (!optionArea) return;
+            
+            optionArea.innerHTML = '';
+            optionTexts.forEach((text, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn option-btn';
+                btn.textContent = text;
+                // 直接绑定，避免闭包问题
+                btn.dataset.optionId = index + 1;
+                btn.onclick = function() {
+                    playClickSound();
+                    chooseOption(parseInt(this.dataset.optionId));
+                };
+                optionArea.appendChild(btn);
+            });
+        }
+
+        // 选择选项（核心：补全所有分支逻辑）
+        function chooseOption(optionId) {
+            // 先检查是否触发结局
+            if (checkEnding()) return;
+
+            if (currentLord === 'qian') {
+                handleQianOption(optionId);
+            } else if (currentLord === 'zhao') {
+                handleZhaoOption(optionId);
+            } else if (currentLord === 'guo') {
+                handleGuoOption(optionId);
+            }
+
+            // 更新数值并再次检查结局
+            updateStats();
+            checkEnding();
+        }
+
+        // ========== 钱弘俶完整剧情分支 ==========
+        function handleQianOption(optionId) {
+            // 阶段1：初始抉择
+            if (storyStage === 1) {
+                if (optionId === 1) { // 扩军备战
+                    stats.bingli += 20;
+                    stats.minxin -= 10;
+                    const story = `你下令在杭州、苏州扩招禁军，胡进思亲自督办，三个月内兵力增至70万，但为筹集军饷，江南赋税提高两成。
+百姓怨声载道，杭州城内出现“宁做太平民，不做扩军卒”的民谣；水丘昭券多次进谏，被胡进思以“动摇军心”为由斥责。
+此时，赵匡胤已发动陈桥兵变，建立北宋，派使者来杭，要求你“归宋称臣，保留王位”，胡进思坚决反对：“吴越兵强马壮，何惧北宋！”`;
+                    const tip = '【剧情提示】胡进思已掌控扩军后的禁军，权势滔天，需警惕其谋反。';
+                    
+                    typeWriter('story-text', story, () => {
+                        typeWriter('story-tip', tip, () => {
+                            updateOptions([
+                                '支持胡进思，斩杀北宋使者，整军备战（兵力+15，民心-15）',
+                                '斥责胡进思，召见崔仁冀，商议归宋事宜（民心+15，兵力-10）',
+                                '派孙太真前往汴京，面见赵匡胤，拖延时间（体力-5，民心+5）',
+                                '调水丘昭券掌禁军，制衡胡进思（体力-5，兵力-5，民心+10）'
+                            ]);
+                        });
+                    });
+                    storyStage = 2;
+                } else if (optionId === 2) { // 安抚百姓
+                    stats.minxin += 20;
+                    stats.bingli -= 10;
+                    const story = `你下旨减免江南三年赋税，开放官仓赈济贫苦，百姓焚香叩拜，民心涨至${stats.minxin}。
+但兵力仅剩${stats.bingli}万，胡进思借机散布“主公软弱，难守吴越”的流言，暗中联络南唐，企图废立；
+赵匡胤得知后，派大将石守信率10万大军进驻淮南，对吴越形成威慑，却又遣使承诺：“归宋后，永保江南安宁。”`;
+                    const tip = '【剧情提示】民心可用，但兵力不足，胡进思已生二心，需尽快稳定朝局。';
+                    
+                    typeWriter('story-text', story, () => {
+                        typeWriter('story-tip', tip, () => {
+                            updateOptions([
+                                '命水丘昭券暗中调查胡进思，收集谋反证据（体力-10，民心+5）',
+                                '接受赵匡胤的条件，纳土归宋（民心+10，兵力-20）',
+                                '联合南唐，共同对抗北宋（兵力+10，民心-5）',
+                                '兴修钱塘江海塘，防御水患（体力-10，民心+20，兵力-5）'
+                            ]);
+                        });
+                    });
+                    storyStage = 2;
+                } else if (optionId === 3) { // 试探北宋
+                    stats.tili -= 5;
+                    const story = `你派崔仁冀前往汴京，面见郭荣（此时郭荣尚未病逝），郭荣表示：“吴越若愿助后周北伐，可永为藩属，互不攻伐。”
+崔仁冀偶遇赵匡胤，赵匡胤私下对他说：“郭荣病重，后周朝局将变，钱王若识时务，可保万全。”
+崔仁冀回杭复命时，胡进思得知此事，认为“后周必乱，北宋将兴，不如早做准备”，再次请你扩军。`;
+                    const tip = '【剧情提示】郭荣病重，后周即将易主，赵匡胤是未来关键，需提前布局。';
+                    
+                    typeWriter('story-text', story, () => {
+                        typeWriter('story-tip', tip, () => {
+                            updateOptions([
+                                '相信赵匡胤，提前送质子入汴（民心+5，体力-5）',
+                                '听信胡进思，趁后周内乱，攻占常州、润州（兵力+10，民心-10）',
+                                '修建雷峰塔，为孙太真祈福，安抚民心（民心+15，体力-5）',
+                                '遣使联络南唐，试探结盟可能（体力-5，民心-5）'
+                            ]);
+                        });
+                    });
+                    storyStage = 2;
+                } else if (optionId === 4) { // 微服私访
+                    stats.tili -= 10;
+                    stats.minxin += 15;
+                    const story = `你换上布衣，微服私访杭州城，亲眼见到百姓虽丰衣足食，却仍担忧战火蔓延。
+在茶馆中，你听闻百姓议论：“钱王若能保江南太平，我们愿世代奉吴越为王，不求扩张，但求安稳。”
+归宫后，孙太真也劝你：“百姓所求，不过太平二字，何必争逐中原？”`;
+                    const tip = '【剧情提示】民间呼声偏向和平，扩军备战恐失民心，需重新权衡。';
+                    
+                    typeWriter('story-text', story, () => {
+                        typeWriter('story-tip', tip, () => {
+                            updateOptions([
+                                '放弃扩军计划，颁布《太平令》，承诺永不主动兴兵（民心+20，兵力-10）',
+                                '折中方案：仅守境扩军，不主动进攻（兵力+10，民心+5）',
+                                '以民间呼声为由，斥责胡进思（民心+10，体力-5）'
+                            ]);
+                        });
+                    });
+                    storyStage = 2;
+                }
+            } 
+            // 阶段2：核心抉择
+            else if (storyStage === 2) {
+                // 阶段1选1（扩军）后的阶段2选项
+                if (optionId === 1) { // 斩杀使者
+                    stats.bingli += 15;
+                    stats.minxin -= 15;
+                    const story = `你斩杀北宋使者，胡进思率禁军进驻杭州城外，扬言“与北宋决一死战”。
+赵匡胤大怒，派石守信、高怀德率20万大军南下，吴越军节节败退，苏州、常州相继失守；
+胡进思见大势已去，企图挟持你投降南唐，被水丘昭券率亲兵阻止，胡进思兵败自尽。
+此时杭州城仅剩3万守军，赵匡胤的大军已兵临城下。`;
+                    
+                    typeWriter('story-text', story, () => {
+                        updateOptions([
+                            '开城投降，纳土归宋（解锁“江南太平”结局）',
+                            '率亲兵突围，逃往福州（解锁“割据福建”结局）',
+                            '自尽殉国，保全吴越王室名节（解锁“忠烈王”结局）',
+                            '请孙太真出面，向赵匡胤求情（解锁“求情免战”结局）'
+                        ]);
+                    });
+                    storyStage = 3;
+                } else if (optionId === 2) { // 商议归宋
+                    stats.minxin += 15;
+                    stats.bingli -= 10;
+                    const story = `你斥责胡进思专权，召见崔仁冀商议归宋事宜。崔仁冀直言：“吴越地狭兵弱，难以抗衡北宋，归宋可保百姓太平。”
+胡进思得知后，连夜率心腹出逃，却被水丘昭券截杀于杭州城外。
+赵匡胤收到你的归降书后，大喜，下旨封你为邓王，永镇江南，无需入朝。`;
+                    
+                    typeWriter('story-text', story, () => {
+                        updateOptions([
+                            '正式纳土归宋，放弃王位（解锁“太平明君”结局）',
+                            '请求保留吴越国号，为北宋藩属（解锁“藩王太平”结局）',
+                            '暂缓归降，观察北宋动向（体力-5，民心+5）'
+                        ]);
+                    });
+                    storyStage = 3;
+                } else if (optionId === 3) { // 派孙太真求和
+                    stats.tili -= 5;
+                    stats.minxin += 5;
+                    const story = `孙太真带着雷峰塔的祈福信物前往汴京，面见赵匡胤。赵匡胤念及与你往日情谊，又惜江南富庶，承诺：
+“若钱王归宋，我必保江南百姓无虞，钱氏子孙永享富贵。”
+孙太真回杭复命，你看着满城百姓，终于下定决心。`;
+                    
+                    typeWriter('story-text', story, () => {
+                        updateOptions([
+                            '遵从承诺，纳土归宋（解锁“江南太平”结局）',
+                            '反悔拒降，依托杭州城死守（解锁“吴越悲歌”结局）'
+                        ]);
+                    });
+                    storyStage = 3;
+                } else if (optionId === 4) { // 制衡胡进思
+                    stats.tili -= 5;
+                    stats.bingli -= 5;
+                    stats.minxin += 10;
+                    const story = `你调水丘昭券掌禁军，剥夺胡进思的兵权。胡进思气急攻心，一病不起，不久便病逝。
+朝局稳定后，赵匡胤的使者再次到来，态度温和：“钱王若归宋，可永为杭州之主。”
+此时江南民心安定，兵力虽减，但百姓皆愿为你效命。`;
+                    
+                    typeWriter('story-text', story, () => {
+                        updateOptions([
+                            '归宋保民（解锁“太平明君”结局）',
+                            '联南唐抗宋（解锁“吴越抗宋”结局）',
+                            '禅位归隐（解锁“归隐太平”结局）'
+                        ]);
+                    });
+                    storyStage = 3;
+                } else if (optionId === 5) { // 兼容其他选项（阶段1选2/3/4后的选项）
+                    // 纳土归宋（直接触发结局）
+                    if (optionId === 2 && storyStage === 2) {
+                        setEnding('江南太平', `你以民心为重，最终纳土归宋，江南百姓免遭战火，杭州城依旧繁华，成为五代乱世中少有的乐土。
+你虽失去王位，却成了百姓心中的“太平王”，钱氏子孙世代富贵，江南终得太平。`);
+                    } else {
+                        // 其他选项默认推进剧情
+                        const story = `你的抉择让朝局暂时稳定，但北宋统一之势已不可挡。
+赵匡胤派大军压境，却并未攻城，只是派使者送来一封书信：“天下分久必合，愿与钱王共守太平。”`;
+                        typeWriter('story-text', story, () => {
+                            updateOptions([
+                                '归宋（解锁“江南太平”结局）',
+                                '抗宋（解锁“吴越悲歌”结局）'
+                            ]);
+                        });
+                        storyStage = 3;
+                    }
+                }
+            }
+            // 阶段3：结局抉择
+            else if (storyStage === 3) {
+                // 根据选项直接触发结局
+                if (optionId === 1) {
+                    setEnding('江南太平', `你以民心为重，最终纳土归宋，江南百姓免遭战火，杭州城依旧繁华，成为五代乱世中少有的乐土。
+你虽失去王位，却成了百姓心中的“太平王”，钱氏子孙世代富贵，江南终得太平。`);
+                } else if (optionId === 2) {
+                    setEnding('割据福建', `你率亲兵突围至福州，依托闽地山水继续抵抗北宋。
+赵匡胤念及旧情，并未穷追不舍，你在福建建立小朝廷，保一方百姓太平，虽未恢复吴越，却也善终。`);
+                } else if (optionId === 3) {
+                    setEnding('忠烈王', `你自尽殉国，吴越百姓痛哭三日。赵匡胤感其忠烈，下令厚葬你，并保全钱氏宗族。
+杭州百姓为你立“忠烈祠”，世代祭祀，吴越虽亡，但其名永存。`);
+                } else if (optionId === 4) {
+                    setEnding('求情免战', `孙太真面见赵匡胤，晓以大义：“钱王愿归宋，但求保江南百姓太平。”
+赵匡胤应允，你纳土归宋后，被封为邓王，安享晚年。江南百姓为孙太真建“太平祠”，感念其救民之恩。`);
+                } else if (optionId === 5) {
+                    setEnding('太平明君', `你正式纳土归宋，放弃王位，被赵匡胤封为“吴越太平王”，留居杭州。
+你一生心系百姓，兴修水利，减免赋税，江南百姓称你为“钱太平”，你的事迹被载入史册，成为五代明君典范。`);
+                } else if (optionId === 6) {
+                    setEnding('吴越悲歌', `你反悔拒降，依托杭州城死守。北宋大军围城三月，城中粮草断绝，百姓易子而食。
+最终城破，你被俘至汴京，赵匡胤虽未杀你，却将你软禁终身。江南经此一战，繁华不再，令人扼腕。`);
+                } else if (optionId === 7) {
+                    setEnding('归隐太平', `你禅位于长子钱惟濬，自己隐居雷峰塔旁，与孙太真相伴终老。
+钱惟濬随后纳土归宋，江南太平，你每日垂钓西湖，不问政事，终得善终，成为乱世中少有的逍遥君主。`);
+                }
+            }
+        }
+
+        // ========== 赵匡胤完整剧情分支 ==========
+        function handleZhaoOption(optionId) {
+            // 阶段1：初始抉择
+            if (storyStage === 1) {
+                if (optionId === 1) { // 筹备兵变
+                    stats.bingli += 15;
+                    stats.minxin -= 5;
+                    const story = `你默许石守信等人筹备兵变，京中禁军多已归附，兵变进度大幅提升。
+符太后得知消息，派冯道前来劝你收手，你以“幼主无能，天下需明主”为由拒绝。
+此时钱弘俶派使者送来粮草，表态“愿奉新主，保江南太平”。`;
+                    const tip = '【剧情提示】兵变已箭在弦上，只需等待时机即可黄袍加身。';
+                    
+                    typeWriter('story-text', story, () => {
+                        typeWriter('story-tip', tip, () => {
+                            updateOptions([
+                                '择日率军北上，在陈桥驿发动兵变（解锁“北宋开国”结局）',
+                                '暂缓兵变，先平定后周内部反对势力（体力-10，兵力+10，民心-5）',
+                                '接受钱弘俶的示好，约定归宋后保其王位（民心+10）'
+                            ]);
+                        });
+                    });
+                    storyStage = 2;
+                } else if (optionId === 2) { // 交出兵权
+                    stats.minxin += 10;
+                    stats.bingli -= 20;
+                    const story = `你面见符太后，交出部分兵权以示忠心。符太后大喜，封你为归德节度使，调离京城。
+但石守信、高怀德等将领不服，暗中联络你，欲在你离京前发动兵变。
+此时郭荣病逝，后周朝局更加动荡，吴越钱弘俶开始观望。`;
+                    const tip = '【剧情提示】交出兵权并未换来信任，反而错失良机。';
+                    
+                    typeWriter('story-text', story, () => {
+                        typeWriter('story-tip', tip, () => {
+                            updateOptions([
+                                '接受调令，隐忍待时（解锁“隐忍称王”结局）',
+                                '联合石守信，在离京前兵变（解锁“仓促兵变”结局）',
+                                '辞官归隐，远离纷争（解锁“归隐江湖”结局）'
+                            ]);
+                        });
+                    });
+                    storyStage = 2;
+                } else if (optionId === 3) { // 结盟吴越
+                    stats.tili -= 5;
+                    stats.bingli += 5;
+                    const story = `你派使者前往杭州，与钱弘俶结盟。钱弘俶答应，若你登基，吴越愿称臣纳贡，永不反叛。
+郭荣得知后，虽未明说，却开始削减你的兵权。
+此时太医告知，郭荣时日无多，幼主临朝已成定局。`;
+                    const tip = '【剧情提示】吴越结盟让你有了江南后盾，但郭荣已对你起疑。';
+                    
+                    typeWriter('story-text', story, () => {
+                        typeWriter('story-tip', tip, () => {
+                            updateOptions([
+                                '趁郭荣病重，发动兵变（解锁“北宋开国”结局）',
+                                '等郭荣病逝后，再行兵变（民心+5，体力-5）',
+                                '劝郭荣立遗诏，由你辅政（民心+10，兵力-5）'
+                            ]);
+                        });
+                    });
+                    storyStage = 2;
+                } else if (optionId === 4) { // 拜访冯道
+                    stats.tili -= 5;
+                    stats.minxin += 10;
+                    const story = `你登门拜访冯道，这位历仕四朝的老臣对你直言：“乱世之中，忠节易守，天命难违。
+郭荣英年早逝，幼主无能，后周气数已尽；钱弘俶保江南太平，乃识时务者，你若能一统天下，当以太平为念。”
+冯道还提醒你：“陈桥驿乃龙兴之地，若需举事，可在此处谋划。”`;
+                    const tip = '【剧情提示】冯道之言点破时局，兵变需师出有名，且需安抚江南民心。';
+                    
+                    typeWriter('story-text', story, () => {
+                        typeWriter('story-tip', tip, () => {
+                            updateOptions([
+                                '筹备陈桥兵变（兵力+10，民心+5）',
+                                '请冯道起草檄文，为兵变正名（民心+15，体力-5）',
+                                '赠冯道重金，求其继续辅佐后周（民心+10，兵力-5）'
+                            ]);
+                        });
+                    });
+                    storyStage = 2;
+                }
+            }
+            // 阶段2：结局抉择
+            else if (storyStage === 2) {
+                if (optionId === 1) {
+                    setEnding('北宋开国', `你黄袍加身建立北宋，终结五代乱世，一统中原及江南，百姓安居乐业，真正迎来了“太平年”。
+你杯酒释兵权，善待功臣，与钱弘俶约定“永保江南太平”，成为一代明君。`);
+                } else if (optionId === 2) {
+                    setEnding('隐忍称王', `你接受调令前往归德，隐忍三年后，趁北宋内乱起兵，最终登基称帝。
+虽一统天下，但战乱让百姓流离失所，江南虽平，却不复往日繁华，你常叹：“太平来迟矣。”`);
+                } else if (optionId === 3) {
+                    setEnding('仓促兵变', `你联合石守信仓促兵变，虽成功登基，但后周旧臣纷纷反叛，吴越钱弘俶也趁机独立。
+你用十年时间才平定天下，百姓苦之久矣，虽得天下，却失民心。`);
+                } else if (optionId === 4) {
+                    setEnding('归隐江湖', `你辞官归隐，隐居华山。后周很快被契丹所灭，中原再次陷入战乱。
+多年后，你偶遇钱弘俶，二人垂钓西湖，叹曰：“乱世之中，太平难求。”`);
+                }
+            }
+        }
+
+        // ========== 郭荣完整剧情分支 ==========
+        function handleGuoOption(optionId) {
+            // 阶段1：初始抉择
+            if (storyStage === 1) {
+                if (optionId === 1) { // 继续北伐
+                    stats.tili -= 20;
+                    stats.bingli += 15;
+                    const story = `你拒绝班师，强撑病体继续指挥北伐，后周大军接连攻克数城，兵锋直指幽州。
+但你的身体愈发虚弱，太医多次警告“若不休养，恐有性命之忧”；
+赵匡胤见你病重，暗中联络石守信等将领，后周军心动摇。`;
+                    const tip = '【剧情提示】北伐即将成功，但你的身体已到极限，需做出最终抉择。';
+                    
+                    typeWriter('story-text', story, () => {
+                        typeWriter('story-tip', tip, () => {
+                            updateOptions([
+                                '继续北伐，攻克幽州（解锁“北伐功成”结局）',
+                                '传位给柴宗训，命赵匡胤辅政（民心+10，体力+5）',
+                                '与契丹议和，班师回朝休养（体力+15，兵力-5，民心+5）'
+                            ]);
+                        });
+                    });
+                    storyStage = 2;
+                } else if (optionId === 2) { // 班师休养
+                    stats.tili += 10;
+                    stats.bingli -= 5;
+                    stats.minxin += 5;
+                    const story = `你听从太医建议，班师回开封休养，命赵匡胤镇守瓦桥关。
+休养期间，你整顿内政，改革税制，后周国力大增。但赵匡胤在边关威望日盛，隐隐有尾大不掉之势。
+钱弘俶派使者前来，愿与后周永结盟好。`;
+                    const tip = '【剧情提示】身体渐愈，但赵匡胤已成心腹大患。';
+                    
+                    typeWriter('story-text', story, () => {
+                        typeWriter('story-tip', tip, () => {
+                            updateOptions([
+                                '削夺赵匡胤兵权（解锁“削权固位”结局）',
+                                '再次北伐，御驾亲征（体力-10，兵力+10）',
+                                '立柴宗训为太子，稳固朝局（民心+15）'
+                            ]);
+                        });
+                    });
+                    storyStage = 2;
+                } else if (optionId === 3) { // 结盟吴越
+                    stats.minxin += 10;
+                    stats.bingli += 5;
+                    const story = `你接见吴越使者，答应结盟条件。钱弘俶派三万水师助你北伐，契丹腹背受敌，节节败退。
+但你的身体每况愈下，赵匡胤在军中说：“陛下若有不测，我必保后周江山。”
+你心知，这“保”字，意味深长。`;
+                    const tip = '【剧情提示】吴越结盟助你北伐，但赵匡胤的忠心存疑。';
+                    
+                    typeWriter('story-text', story, () => {
+                        typeWriter('story-tip', tip, () => {
+                            updateOptions([
+                                '托孤赵匡胤，继续北伐（解锁“托孤憾事”结局）',
+                                '立遗诏，由范质辅政（民心+10，体力-5）',
+                                '禅位赵匡胤，求保后周百姓（解锁“禅位太平”结局）'
+                            ]);
+                        });
+                    });
+                    storyStage = 2;
+                } else if (optionId === 4) { // 试探赵匡胤
+                    stats.tili -= 5;
+                    stats.bingli += 5;
+                    const story = `你屏退左右，单独召见赵匡胤，直言问：“朕若归天，你会辅佐幼主，还是取而代之？”
+赵匡胤跪地叩首：“臣愿以死效忠后周，若有二心，天诛地灭！”
+但你从其眼神中看出迟疑，心知乱世之中，誓言未必可信。`;
+                    const tip = '【剧情提示】赵匡胤忠心存疑，需提前布局，要么削其兵权，要么委以重任。';
+                    
+                    typeWriter('story-text', story, () => {
+                        typeWriter('story-tip', tip, () => {
+                            updateOptions([
+                                '削夺赵匡胤兵权（兵力-10，民心+5）',
+                                '升赵匡胤为兵马大元帅（兵力+15，民心-5）',
+                                '命赵匡胤写下血书，立誓效忠（民心+10，体力-5）'
+                            ]);
+                        });
+                    });
+                    storyStage = 2;
+                }
+            }
+            // 阶段2：结局抉择
+            else if (storyStage === 2) {
+                if (optionId === 1) {
+                    setEnding('北伐功成', `你继续北伐，攻克幽州，收复燕云十六州，一统北方。但班师途中，你病逝于瓦桥关，年仅39岁。
+后周百姓痛哭流涕，称你为“五代第一明君”。虽未能亲眼见太平，但你的功绩永载史册。`);
+                } else if (optionId === 2) {
+                    setEnding('削权固位', `你削夺赵匡胤兵权，改任文官。赵匡胤心怀不满，却隐忍不发。
+你在位十年，励精图治，后周国力达到顶峰，百姓安居乐业，真正迎来了“太平年”。
+你病逝后，柴宗训顺利继位，后周延续百年，成为五代中最长命的王朝。`);
+                } else if (optionId === 3) {
+                    setEnding('托孤憾事', `你托孤赵匡胤，让其辅佐柴宗训。但你病逝后，赵匡胤发动陈桥兵变，黄袍加身。
+虽建立北宋，一统天下，但你毕生心血，终究为他人做了嫁衣，成为乱世一大憾事。`);
+                } else if (optionId === 4) {
+                    setEnding('禅位太平', `你禅位给赵匡胤，只求他保后周百姓太平。赵匡胤应允，登基后励精图治，一统天下。
+你隐居洛阳，安享晚年，见天下太平，叹曰：“江山易主，百姓安乐，足矣。”`);
+                }
+            }
+        }
+
+        // 检查结局触发条件
+        function checkEnding() {
+            // 钱弘俶结局条件
+            if (currentLord === 'qian') {
+                if (stats.minxin >= 100) {
+                    setEnding('江南太平', `你以民心为重，最终纳土归宋，江南百姓免遭战火，杭州城依旧繁华，成为五代乱世中少有的乐土。
+你虽失去王位，却成了百姓心中的“太平王”，钱氏子孙世代富贵，江南终得太平。`);
+                    return true;
+                } else if (stats.bingli <= 10) {
+                    setEnding('吴越悲歌', `你执意抗宋，吴越兵力耗尽，杭州城破。你被俘至汴京，赵匡胤虽未杀你，却将你软禁终身。
+江南经此一战，繁华不再，令人扼腕。`);
+                    return true;
+                } else if (stats.tili <= 10) {
+                    setEnding('积劳成疾', `你日夜操劳，积劳成疾，病逝于杭州王宫。钱氏子孙无力支撑，最终纳土归宋。
+虽你未能亲眼见太平，但江南百姓感念你的恩德，世代祭祀。`);
+                    return true;
+                }
+            }
+            // 赵匡胤结局条件
+            else if (currentLord === 'zhao') {
+                if (stats.bingli >= 110) {
+                    setEnding('北宋开国', `你黄袍加身建立北宋，终结五代乱世，一统中原及江南，百姓安居乐业，真正迎来了“太平年”。
+你杯酒释兵权，善待功臣，与钱弘俶约定“永保江南太平”，成为一代明君。`);
+                    return true;
+                } else if (stats.minxin <= 30) {
+                    setEnding('众叛亲离', `你执意兵变，不得民心，后周旧臣纷纷反叛，吴越钱弘俶也出兵相助后周。
+你兵败被杀，成为乱世中的又一个悲剧英雄。`);
+                    return true;
+                }
+            }
+            // 郭荣结局条件
+            else if (currentLord === 'guo') {
+                if (stats.tili <= 10) {
+                    setEnding('英年早逝', `你积劳成疾，英年早逝，但你收复幽州，一统北方，为后周奠定了统一基业。
+虽未能亲眼看到“太平年”，但你的功绩被后世铭记，称你为“五代第一明君”。`);
+                    return true;
+                } else if (stats.bingli >= 100) {
+                    setEnding('一统天下', `你平定契丹，一统北方，又南征吴越，最终一统天下。你在位二十年，励精图治，百姓安居乐业，
+真正实现了“太平年”的愿景，成为五代最伟大的君主。`);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 设置结局（打字机显示）
+        function setEnding(endTitle, endText) {
+            document.getElementById('end-title').textContent = `结局：${endTitle}`;
+            typeWriter('end-text', endText);
+            switchPage('end-page');
+        }
+
+        // 重新开始游戏
+        function restartGame() {
+            currentLord = '';
+            stats = { minxin: 0, bingli: 0, tili: 0 };
+            storyStage = 1;
+            isTyping = false;
+            switchPage('start-page');
+        }
+    </script>
+</body>
+</html>
