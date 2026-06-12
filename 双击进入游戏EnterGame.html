@@ -11,7 +11,7 @@
             padding: 0;
             box-sizing: border-box;
             font-family: "楷体", "华文楷体", "SimKai", "宋体", "SimSun", sans-serif;
-            /* 隐藏默认鼠标指针 */
+            /* 隐藏系统指针，使用自定义剑形光标 */
             cursor: none;
             /* 移除全局字号加大，改为默认100% */
             font-size: 100%;
@@ -91,7 +91,7 @@
             border: none;
             padding: 10px 20px;
             border-radius: 5px;
-            cursor: none; /* 隐藏默认指针 */
+            cursor: none; /* 按钮统一使用剑形光标 */
             margin: 10px 5px;
             font-size: 16px; /* 固定正常字号 */
             transition: all 0.2s ease;
@@ -539,7 +539,10 @@
         let storyStage = 1;
         let isTyping = false;
         let isOptionsLocked = false;   // 打字机期间锁定选项
-        let qianPath = '';            // 钱弘俶子路径追踪
+        let qianPath = '';            // 钱弘俶stage1路径
+        let qianSubPath = '';         // 钱弘俶stage2子路径细化
+        let guoPath = '';             // 郭荣stage1路径
+        let zhaoPath = '';            // 赵匡胤stage1路径
         const typingSpeed = 20;
         const swordCursor = document.querySelector('.custom-cursor');
         // Web Audio API 上下文（惰性初始化）
@@ -739,7 +742,10 @@
             currentLord = lordType;
             storyStage = 1;
             isTyping = false;
-            qianPath = ''; // 重置钱弘俶子路径
+            qianPath = ''; // 重置钱弘俶路径
+            qianSubPath = '';
+            guoPath = '';
+            zhaoPath = '';
 
             if (lordType === 'qian') {
                 stats = { minxin: 80, bingli: 50, tili: 70 };
@@ -867,7 +873,6 @@
             }
 
             updateStats();
-            checkEnding();
         }
 
         // ========== 钱弘俶完整剧情分支 ==========
@@ -990,6 +995,7 @@
                         '请孙太真出面，向赵匡胤求情（结局）'
                     ]);
                 });
+                qianSubPath = 'expand_kill';
                 storyStage = 3;
             } else if (optionId === 2) { // 商议归宋
                 stats.minxin += 15;
@@ -1005,6 +1011,7 @@
                         '暂缓归降，观察北宋动向（体力-5，民心+5，继续）'
                     ]);
                 });
+                qianSubPath = 'expand_surrender';
                 storyStage = 3;
             } else if (optionId === 3) { // 派孙太真求和
                 stats.tili -= 5;
@@ -1019,6 +1026,7 @@
                         '反悔拒降，依托杭州城死守（结局）'
                     ]);
                 });
+                qianSubPath = 'expand_taizhen';
                 storyStage = 3;
             } else if (optionId === 4) { // 制衡胡进思
                 stats.tili -= 5;
@@ -1035,6 +1043,7 @@
                         '禅位归隐（结局）'
                     ]);
                 });
+                qianSubPath = 'expand_balance';
                 storyStage = 3;
             }
         }
@@ -1056,6 +1065,7 @@
                         ]);
                     });
                 });
+                qianSubPath = 'soothe_investigate';
                 storyStage = 3;
             } else if (optionId === 2) { // 纳土归宋
                 stats.minxin += 10;
@@ -1081,6 +1091,7 @@
                         ]);
                     });
                 });
+                qianSubPath = 'soothe_ally';
                 storyStage = 3;
             } else if (optionId === 4) { // 兴修海塘
                 stats.tili -= 10;
@@ -1099,6 +1110,7 @@
                         ]);
                     });
                 });
+                qianSubPath = 'soothe_seawall';
                 storyStage = 3;
             }
         }
@@ -1120,6 +1132,7 @@
                         ]);
                     });
                 });
+                qianSubPath = 'probe_trust';
                 storyStage = 3;
             } else if (optionId === 2) { // 攻占常州
                 stats.bingli += 10;
@@ -1136,6 +1149,7 @@
                         ]);
                     });
                 });
+                qianSubPath = 'probe_attack';
                 storyStage = 3;
             } else if (optionId === 3) { // 修建雷峰塔
                 stats.minxin += 15;
@@ -1153,6 +1167,7 @@
                         ]);
                     });
                 });
+                qianSubPath = 'probe_pagoda';
                 storyStage = 3;
             } else if (optionId === 4) { // 联络南唐
                 stats.tili -= 5;
@@ -1170,6 +1185,7 @@
                         ]);
                     });
                 });
+                qianSubPath = 'probe_ally';
                 storyStage = 3;
             }
         }
@@ -1192,6 +1208,7 @@
                         ]);
                     });
                 });
+                qianSubPath = 'incognito_order';
                 storyStage = 3;
             } else if (optionId === 2) { // 折中方案
                 stats.bingli += 10;
@@ -1210,6 +1227,7 @@
                         ]);
                     });
                 });
+                qianSubPath = 'incognito_compromise';
                 storyStage = 3;
             } else if (optionId === 3) { // 斥责胡进思
                 stats.minxin += 10;
@@ -1226,148 +1244,87 @@
                         ]);
                     });
                 });
+                qianSubPath = 'incognito_reprimand';
                 storyStage = 3;
             }
         }
 
-        // ---- 钱弘俶·阶段3结局分发 ----
+                // ---- 钱弘俶·阶段3结局分发（基于qianSubPath） ----
         function handleQianStage3(optionId) {
-            // 根据 qianPath + optionId 分发正确结局
-            if (qianPath === 'expand') {
-                // 扩军路径
-                if (optionId === 1) {
-                    setEnding('江南太平', `你以民心为重，最终纳土归宋，江南百姓免遭战火，杭州城依旧繁华，成为五代乱世中少有的乐土。
-你虽失去王位，却成了百姓心中的"太平王"，钱氏子孙世代富贵，江南终得太平。`);
-                } else if (optionId === 2) {
-                    setEnding('藩王太平', `你请求保留吴越国号，作为北宋藩属。赵匡胤应允，吴越以藩国形式继续存在。
-你在杭州安享晚年，每年向北宋纳贡，百姓免遭战火，江南繁荣依旧。`);
-                } else if (optionId === 3) {
-                    // 暂缓归降：继续剧情
-                    stats.tili -= 5;
-                    stats.minxin += 5;
-                    const story = `你暂缓归降，观察北宋动向。赵匡胤也不催促，只是派兵在边境驻扎，静待你回心转意。
-半年后，胡进思余党在苏州作乱，你派水丘昭券平定，江南局势再次动荡。`;
-                    typeWriter('story-text', story, () => {
-                        updateOptions([
-                            '局势动荡，归宋为上（结局）',
-                            '趁机整军，独立抗宋（结局）'
-                        ]);
+            // ========== 扩军路线 (expand) ==========
+            if (qianSubPath === 'expand_kill') {
+                if (optionId === 1) setEnding('江南太平', '你以民心为重，最终纳土归宋，江南百姓免遭战火，杭州城依旧繁华，成为五代乱世中少有的乐土。\n你虽失去王位，却成了百姓心中的"太平王"，钱氏子孙世代富贵，江南终得太平。');
+                else if (optionId === 2) setEnding('割据福建', '你率亲兵突围至福州，依托闽地山水继续抵抗北宋。\n赵匡胤念及旧情，并未穷追不舍，你在福建建立小朝廷，保一方百姓太平，虽未恢复吴越，却也善终。');
+                else if (optionId === 3) setEnding('忠烈王', '你自尽殉国，吴越百姓痛哭三日。赵匡胤感其忠烈，下令厚葬你，并保全钱氏宗族。\n杭州百姓为你立"忠烈祠"，世代祭祀，吴越虽亡，但其名永存。');
+                else if (optionId === 4) setEnding('求情免战', '孙太真面见赵匡胤，晓以大义："钱王愿归宋，但求保江南百姓太平。"\n赵匡胤应允，你纳土归宋后，被封为邓王，安享晚年。江南百姓为孙太真建"太平祠"，感念其救民之恩。');
+            } else if (qianSubPath === 'expand_surrender') {
+                if (optionId === 1) setEnding('太平明君', '你正式纳土归宋，放弃王位，被赵匡胤封为"吴越太平王"，留居杭州。\n你一生心系百姓，兴修水利，减免赋税，江南百姓称你为"钱太平"，你的事迹被载入史册，成为五代明君典范。');
+                else if (optionId === 2) setEnding('藩王太平', '你请求保留吴越国号，作为北宋藩属。赵匡胤应允，吴越以藩国形式继续存在。\n你在杭州安享晚年，每年向北宋纳贡，百姓免遭战火，江南繁荣依旧。');
+                else if (optionId === 3) {
+                    stats.tili -= 5; stats.minxin += 5;
+                    typeWriter('story-text', '你暂缓归降，观察北宋动向。赵匡胤也不催促，只是派兵在边境驻扎，静待你回心转意。\n半年后，胡进思余党在苏州作乱，你派水丘昭券平定，江南局势再次动荡。', function() {
+                        updateOptions(['局势动荡，归宋为上（结局）', '趁机整军，独立抗宋（结局）']);
                     });
                 }
-            } else if (qianPath === 'expand' && optionId >= 1 && optionId <= 4) {
-                // 斩杀使者路径的4个结局
-                if (optionId === 1) {
-                    setEnding('江南太平', `你以民心为重，最终纳土归宋，江南百姓免遭战火，杭州城依旧繁华，成为五代乱世中少有的乐土。
-你虽失去王位，却成了百姓心中的"太平王"，钱氏子孙世代富贵，江南终得太平。`);
-                } else if (optionId === 2) {
-                    setEnding('割据福建', `你率亲兵突围至福州，依托闽地山水继续抵抗北宋。
-赵匡胤念及旧情，并未穷追不舍，你在福建建立小朝廷，保一方百姓太平，虽未恢复吴越，却也善终。`);
-                } else if (optionId === 3) {
-                    setEnding('忠烈王', `你自尽殉国，吴越百姓痛哭三日。赵匡胤感其忠烈，下令厚葬你，并保全钱氏宗族。
-杭州百姓为你立"忠烈祠"，世代祭祀，吴越虽亡，但其名永存。`);
-                } else if (optionId === 4) {
-                    setEnding('求情免战', `孙太真面见赵匡胤，晓以大义："钱王愿归宋，但求保江南百姓太平。"
-赵匡胤应允，你纳土归宋后，被封为邓王，安享晚年。江南百姓为孙太真建"太平祠"，感念其救民之恩。`);
-                }
-            } else if (qianPath === 'expand' && optionId === 4) {
-                // 制衡胡进思的3个结局
-                if (optionId === 1) {
-                    setEnding('太平明君', `你正式纳土归宋，放弃王位，被赵匡胤封为"吴越太平王"，留居杭州。
-你一生心系百姓，兴修水利，减免赋税，江南百姓称你为"钱太平"，你的事迹被载入史册，成为五代明君典范。`);
-                } else if (optionId === 2) {
-                    setEnding('吴越抗宋', `你联合南唐残余势力，共同抗宋。虽兵力不足，但百姓支持，竟与北宋相持数年。
-最终赵匡胤念及旧情，封你为"吴越王"，允你自治，吴越国延续至北宋灭亡。`);
-                } else if (optionId === 3) {
-                    setEnding('归隐太平', `你禅位于长子钱惟濬，自己隐居雷峰塔旁，与孙太真相伴终老。
-钱惟濬随后纳土归宋，江南太平，你每日垂钓西湖，不问政事，终得善终，成为乱世中少有的逍遥君主。`);
-                }
-            } else if (qianPath === 'expand' && optionId === 2) {
-                // 商议归宋的结局映射
-                if (optionId === 1) {
-                    setEnding('太平明君', `你正式纳土归宋，放弃王位，被赵匡胤封为"吴越太平王"，留居杭州。
-你一生心系百姓，兴修水利，减免赋税，江南百姓称你为"钱太平"，你的事迹被载入史册，成为五代明君典范。`);
-                } else if (optionId === 2) {
-                    setEnding('藩王太平', `你请求保留吴越国号，作为北宋藩属。赵匡胤应允，吴越以藩国形式继续存在。
-你在杭州安享晚年，每年向北宋纳贡，百姓免遭战火，江南繁荣依旧。`);
-                } else if (optionId === 3) {
-                    // 暂缓归降（已在上面处理）
-                }
-            } else if (qianPath === 'expand' && optionId === 3) {
-                // 孙太真求和路径的结局
-                if (optionId === 1) {
-                    setEnding('江南太平', `你以民心为重，最终纳土归宋，江南百姓免遭战火，杭州城依旧繁华，成为五代乱世中少有的乐土。
-你虽失去王位，却成了百姓心中的"太平王"，钱氏子孙世代富贵，江南终得太平。`);
-                } else if (optionId === 2) {
-                    setEnding('吴越悲歌', `你反悔拒降，依托杭州城死守。北宋大军围城三月，城中粮草断绝，百姓易子而食。
-最终城破，你被俘至汴京，赵匡胤虽未杀你，却将你软禁终身。江南经此一战，繁华不再，令人扼腕。`);
-                }
-            } else if (qianPath === 'incognito' && optionId === 2) {
-                // 折中方案->再观望
-                if (optionId === 1) {
-                    setEnding('江南太平', `你以民心为重，最终纳土归宋，江南百姓免遭战火，杭州城依旧繁华，成为五代乱世中少有的乐土。
-你虽失去王位，却成了百姓心中的"太平王"，钱氏子孙世代富贵，江南终得太平。`);
-                } else if (optionId === 2) {
-                    setEnding('吴越悲歌', `你凭坚城利兵与北宋一战，终因寡不敌众，杭州城破。
-你被俘至汴京，赵匡胤念及旧情未杀你，但江南经此一战，繁华不再。`);
-                } else if (optionId === 3) {
-                    stats.tili -= 5;
-                    stats.minxin += 5;
-                    const story = `你继续观望，但北宋统一之势已不可挡。
-赵匡胤派使者送来最后通牒。`;
-                    typeWriter('story-text', story, () => {
-                        updateOptions([
-                            '归宋（结局）',
-                            '抗宋（结局）'
-                        ]);
-                    });
-                }
-            } else {
-                // ===== 通用结局映射（覆盖所有剩下路径） =====
-                const endingMap = {
-                    1: { title: '江南太平', text: `你以民心为重，最终纳土归宋，江南百姓免遭战火，杭州城依旧繁华，成为五代乱世中少有的乐土。
-你虽失去王位，却成了百姓心中的"太平王"，钱氏子孙世代富贵，江南终得太平。` },
-                    2: { title: '太平明君', text: `你正式纳土归宋，放弃王位，被赵匡胤封为"吴越太平王"，留居杭州。
-你一生心系百姓，兴修水利，减免赋税，江南百姓称你为"钱太平"，你的事迹被载入史册，成为五代明君典范。` },
-                    3: { title: '归隐太平', text: `你禅位于长子钱惟濬，自己隐居雷峰塔旁，与孙太真相伴终老。
-钱惟濬随后纳土归宋，江南太平，你每日垂钓西湖，不问政事，终得善终，成为乱世中少有的逍遥君主。` }
-                };
-                // 针对不同 qianPath 的特定映射
-                const specificMap = {
-                    'soothe': {
-                        1: { title: '擒杀权臣', text: `你擒杀胡进思，清除其党羽。朝局稳定后，赵匡胤的使者到来，态度温和。
-你顺势归宋，被封为吴越王，永镇江南。一代权臣的覆灭，换来江南的太平。` },
-                        2: { title: '仁义明君', text: `你召胡进思入宫，当面质问其谋反之事。胡进思羞愧难当，伏地认罪。
-你念其拥立之功，饶其不死，贬为庶民。赵匡胤闻讯赞道："钱王仁义，天下归心。"` }
-                    },
-                    'probe': {
-                        1: { title: '江南太平', text: `你以民心为重，最终纳土归宋，江南百姓免遭战火，杭州城依旧繁华，成为五代乱世中少有的乐土。
-你虽失去王位，却成了百姓心中的"太平王"，钱氏子孙世代富贵，江南终得太平。` },
-                        2: { title: '吴越悲歌', text: `你硬抗到底，死守杭州。赵匡胤大军围城，城中粮尽援绝。
-最终城破被俘，虽免一死，但江南繁华尽毁，令人扼腕。` }
-                    },
-                    'incognito': {
-                        1: { title: '江南太平', text: `你以民心为重，最终纳土归宋，江南百姓免遭战火，杭州城依旧繁华，成为五代乱世中少有的乐土。
-你虽失去王位，却成了百姓心中的"太平王"，钱氏子孙世代富贵，江南终得太平。` },
-                        2: { title: '吴越抗宋', text: `你凭坚城利兵与北宋一战，终因寡不敌众，杭州城破。
-你被俘至汴京，赵匡胤念及旧情未杀你，但江南经此一战，繁华不再。` },
-                        3: { title: '清除余党', text: `你彻底清除胡进思余党，朝局稳固。随后纳土归宋，江南百姓得享太平。
-你虽失去王位，却赢得千古美名。` }
-                    }
-                };
-                const pathMap = specificMap[qianPath];
-                if (pathMap && pathMap[optionId]) {
-                    setEnding(pathMap[optionId].title, pathMap[optionId].text);
-                } else if (endingMap[optionId]) {
-                    setEnding(endingMap[optionId].title, endingMap[optionId].text);
-                } else {
-                    // 兜底
-                    setEnding('江南太平', `你以民心为重，最终纳土归宋，江南百姓免遭战火，杭州城依旧繁华，成为五代乱世中少有的乐土。
-你虽失去王位，却成了百姓心中的"太平王"，钱氏子孙世代富贵，江南终得太平。`);
-                }
+            } else if (qianSubPath === 'expand_taizhen') {
+                if (optionId === 1) setEnding('江南太平', '你以民心为重，最终纳土归宋，江南百姓免遭战火，杭州城依旧繁华，成为五代乱世中少有的乐土。\n你虽失去王位，却成了百姓心中的"太平王"，钱氏子孙世代富贵，江南终得太平。');
+                else if (optionId === 2) setEnding('吴越悲歌', '你反悔拒降，依托杭州城死守。北宋大军围城三月，城中粮草断绝，百姓易子而食。\n最终城破，你被俘至汴京，赵匡胤虽未杀你，却将你软禁终身。江南经此一战，繁华不再，令人扼腕。');
+            } else if (qianSubPath === 'expand_balance') {
+                if (optionId === 1) setEnding('太平明君', '你正式纳土归宋，放弃王位，被赵匡胤封为"吴越太平王"，留居杭州。\n你一生心系百姓，兴修水利，减免赋税，江南百姓称你为"钱太平"，你的事迹被载入史册，成为五代明君典范。');
+                else if (optionId === 2) setEnding('吴越抗宋', '你联合南唐残余势力，共同抗宋。虽兵力不足，但百姓支持，竟与北宋相持数年。\n最终赵匡胤念及旧情，封你为"吴越王"，允你自治，吴越国延续至北宋灭亡。');
+                else if (optionId === 3) setEnding('归隐太平', '你禅位于长子钱惟濬，自己隐居雷峰塔旁，与孙太真相伴终老。\n钱惟濬随后纳土归宋，江南太平，你每日垂钓西湖，不问政事，终得善终，成为乱世中少有的逍遥君主。');
             }
-        }
-
-        // ========== 赵匡胤完整剧情分支 ==========
+            // ========== 安抚路线 (soothe) ==========
+            else if (qianSubPath === 'soothe_investigate') {
+                if (optionId === 1) setEnding('擒杀权臣', '你擒杀胡进思，清除其党羽。朝局稳定后，赵匡胤的使者到来，态度温和。\n你顺势归宋，被封为吴越王，永镇江南。一代权臣的覆灭，换来江南的太平。');
+                else if (optionId === 2) setEnding('仁义明君', '你召胡进思入宫，当面质问其谋反之事。胡进思羞愧难当，伏地认罪。\n你念其拥立之功，饶其不死，贬为庶民。赵匡胤闻讯赞道："钱王仁义，天下归心。"');
+            } else if (qianSubPath === 'soothe_ally') {
+                if (optionId === 1) setEnding('江南太平', '你开城投降，纳土归宋。赵匡胤大喜，封你为邓王，永镇江南。\n江南百姓免遭战火，杭州城依旧繁华。你虽失去王位，却成了百姓心中的"太平王"。');
+                else if (optionId === 2) setEnding('吴越悲歌', '你举国一战，血战到底。终因寡不敌众，杭州城破。\n你被俘至汴京，赵匡胤念及旧情未杀你，但江南经此一战，繁华不再，令人扼腕。');
+            } else if (qianSubPath === 'soothe_seawall') {
+                if (optionId === 1) setEnding('吴越抗宋', '你乘民心所向整军抗宋。百姓虽愿效命，但吴越地狭兵弱，终难敌北宋大军。\n你被俘至汴京，赵匡胤感你治水之功，封你为"太平侯"，留居汴京终老。');
+                else if (optionId === 2) setEnding('江南太平', '你功成身退，纳土归宋。赵匡胤感慨："钱王以百姓为重，真明君也。"\n你被封为邓王，永镇杭州。钱塘江海塘上，"太平堤"三字至今犹在。');
+                else if (optionId === 3) setEnding('归隐太平', '你禅位于长子钱惟濬，隐居西湖。钱惟濬随后纳土归宋，江南得享太平。\n你每日垂钓西湖，与孙太真相伴，百姓称你为"逍遥太平公"。');
+            }
+            // ========== 试探路线 (probe) ==========
+            else if (qianSubPath === 'probe_trust') {
+                if (optionId === 1) setEnding('江南太平', '你顺势归宋，赵匡胤信守承诺，封你为邓王，永镇杭州。\n江南百姓免遭战火，天下终得太平。');
+                else if (optionId === 2) {
+                    stats.tili -= 5; stats.minxin += 5;
+                    typeWriter('story-text', '你暂缓归附，观望形势。赵匡胤也不催促，只是派使者送来一封亲笔信，信中只有四字："静候佳音。"', function() {
+                        updateOptions(['顺势归宋，永保太平（结局）', '自立门户，抗宋保境（结局）']);
+                    });
+                }
+            } else if (qianSubPath === 'probe_attack') {
+                if (optionId === 1) setEnding('江南太平', '你遣使求和，归宋保民。赵匡胤应允，封你为邓王。\n江南百姓免遭战火，常州、润州虽失，但百姓得享太平。');
+                else if (optionId === 2) setEnding('吴越悲歌', '你硬抗到底，死守杭州。赵匡胤大军围城，城中粮尽援绝。\n最终城破被俘，虽免一死，但江南繁华尽毁，令人扼腕。');
+            } else if (qianSubPath === 'probe_pagoda') {
+                if (optionId === 1) setEnding('江南太平', '你民心已固，纳土归宋。赵匡胤赞你："钱王重情重义，真明君也。"\n雷峰塔下，你与孙太真相伴终老，江南得享太平。');
+                else if (optionId === 2) setEnding('吴越悲歌', '你以仁德之名号召江南抗宋。百姓虽响应，但终难敌北宋大军。\n杭州城破，雷峰塔在战火中受损，江南繁华不再。');
+            } else if (qianSubPath === 'probe_ally') {
+                if (optionId === 1) setEnding('江南太平', '你与南唐断交，归宋保民。赵匡胤赞你识时务，封你为邓王。\n江南百姓得享太平，钱氏子孙世代富贵。');
+                else if (optionId === 2) setEnding('吴越悲歌', '你继续联唐抗宋。南唐覆灭后，吴越孤立无援，终被北宋所灭。\n你被俘至汴京，江南繁华尽毁。');
+            }
+            // ========== 微服路线 (incognito) ==========
+            else if (qianSubPath === 'incognito_order') {
+                if (optionId === 1) setEnding('江南太平', '你功成身退，纳土归宋。赵匡胤感慨："钱王真明君也，归宋后必得善终。"\n江南百姓得享太平，《太平令》永载史册。');
+                else if (optionId === 2) setEnding('吴越抗宋', '你坚守吴越，护百姓周全。虽兵少将寡，但百姓同心，竟与北宋相持多年。\n最终赵匡胤允你自治，吴越得以延续。');
+            } else if (qianSubPath === 'incognito_compromise') {
+                if (optionId === 1) setEnding('江南太平', '你归宋保民，赵匡胤封你为邓王。\n江南百姓免遭战火，杭州城依旧繁华。');
+                else if (optionId === 2) setEnding('吴越悲歌', '你凭坚城利兵与北宋一战，终因寡不敌众，杭州城破。\n你被俘至汴京，赵匡胤念及旧情未杀你，但江南经此一战，繁华不再。');
+                else if (optionId === 3) {
+                    stats.tili -= 5; stats.minxin += 5;
+                    typeWriter('story-text', '你继续观望，但北宋统一之势已不可挡。\n赵匡胤派使者送来最后通牒。', function() {
+                        updateOptions(['归宋（结局）', '抗宋（结局）']);
+                    });
+                }
+            } else if (qianSubPath === 'incognito_reprimand') {
+                if (optionId === 1) setEnding('清除余党', '你彻底清除胡进思余党，朝局稳固。随后纳土归宋，江南百姓得享太平。\n你虽失去王位，却赢得千古美名。');
+                else if (optionId === 2) setEnding('仁义明君', '你怀柔安抚，给胡进思留条退路。胡进思感念你的宽厚，主动交出兵权，告老还乡。\n你以仁义治江南，百姓安居乐业，最终纳土归宋，得享善终。');
+            } else {
+                setEnding('江南太平', '你以民心为重，最终纳土归宋，江南百姓免遭战火，杭州城依旧繁华，成为五代乱世中少有的乐土。\n你虽失去王位，却成了百姓心中的"太平王"，钱氏子孙世代富贵，江南终得太平。');
+            }
+        }// ========== 赵匡胤完整剧情分支 ==========
         function handleZhaoOption(optionId) {
             if (storyStage === 1) {
                 if (optionId === 1) { // 筹备兵变
@@ -1387,6 +1344,7 @@
                             ]);
                         });
                     });
+                    zhaoPath = 'mutiny';
                     storyStage = 2;
                 } else if (optionId === 2) { // 交出兵权
                     stats.minxin += 10;
@@ -1405,6 +1363,7 @@
                             ]);
                         });
                     });
+                    zhaoPath = 'submit';
                     storyStage = 2;
                 } else if (optionId === 3) { // 结盟吴越
                     stats.tili -= 5;
@@ -1423,6 +1382,7 @@
                             ]);
                         });
                     });
+                    zhaoPath = 'ally_wuyue';
                     storyStage = 2;
                 } else if (optionId === 4) { // 拜访冯道
                     stats.tili -= 5;
@@ -1441,22 +1401,27 @@
                             ]);
                         });
                     });
+                    zhaoPath = 'visit_feng';
                     storyStage = 2;
                 }
             }
             else if (storyStage === 2) {
-                if (optionId === 1) {
-                    setEnding('北宋开国', `你黄袍加身建立北宋，终结五代乱世，一统中原及江南，百姓安居乐业，真正迎来了"太平年"。
-你杯酒释兵权，善待功臣，与钱弘俶约定"永保江南太平"，成为一代明君。`);
-                } else if (optionId === 2) {
-                    setEnding('隐忍称王', `你接受调令前往归德，隐忍三年后，趁北宋内乱起兵，最终登基称帝。
-虽一统天下，但战乱让百姓流离失所，江南虽平，却不复往日繁华，你常叹："太平来迟矣。"`);
-                } else if (optionId === 3) {
-                    setEnding('仓促兵变', `你联合石守信仓促兵变，虽成功登基，但后周旧臣纷纷反叛，吴越钱弘俶也趁机独立。
-你用十年时间才平定天下，百姓苦之久矣，虽得天下，却失民心。`);
-                } else if (optionId === 4) {
-                    setEnding('归隐江湖', `你辞官归隐，隐居华山。后周很快被契丹所灭，中原再次陷入战乱。
-多年后，你偶遇钱弘俶，二人垂钓西湖，叹曰："乱世之中，太平难求。"`);
+                if (zhaoPath === 'mutiny') {
+                    if (optionId === 1) setEnding('北宋开国', '你黄袍加身建立北宋，终结五代乱世，一统中原及江南，百姓安居乐业，真正迎来了"太平年"。\n你杯酒释兵权，善待功臣，与钱弘俶约定"永保江南太平"，成为一代明君。');
+                    else if (optionId === 2) setEnding('隐忍称王', '你暂缓兵变，先平定后周内部反对势力。待局势稳定后，你率军北上陈桥驿，黄袍加身建立北宋。\n虽兵变推迟，但准备更充分，后周旧臣纷纷归附，江山稳固，江南亦得太平。');
+                    else if (optionId === 3) setEnding('吴越结盟', '你接受钱弘俶的示好，约定归宋后保留其王位。赵匡胤登基后，信守承诺，封钱弘俶为邓王。\n吴越不战而降，江南得享太平，钱氏子孙世代富贵。');
+                } else if (zhaoPath === 'submit') {
+                    if (optionId === 1) setEnding('隐忍称王', '你接受调令前往归德，隐忍三年后，趁后周内乱起兵，最终登基称帝。\n虽得天下，但战乱让百姓流离失所，江南虽平，却不复往日繁华，你常叹："太平来迟矣。"');
+                    else if (optionId === 2) setEnding('仓促兵变', '你联合石守信仓促兵变，虽成功登基，但后周旧臣纷纷反叛，吴越钱弘俶也趁机独立。\n你用十年时间才平定天下，百姓苦之久矣，虽得天下，却失民心。');
+                    else if (optionId === 3) setEnding('归隐江湖', '你辞官归隐，隐居华山。后周很快被契丹所灭，中原再次陷入战乱。\n多年后，你偶遇钱弘俶，二人垂钓西湖，叹曰："乱世之中，太平难求。"');
+                } else if (zhaoPath === 'ally_wuyue') {
+                    if (optionId === 1) setEnding('北宋开国', '你趁郭荣病重发动兵变，黄袍加身建立北宋。\n你终结五代乱世，一统中原及江南，与钱弘俶约定"永保江南太平"，成为一代明君。');
+                    else if (optionId === 2) setEnding('隐忍称王', '你等郭荣病逝后，在陈桥驿发动兵变，黄袍加身建立北宋。\n后周幼主禅位，天下易主，你励精图治，终成一统。');
+                    else if (optionId === 3) setEnding('托孤辅政', '你劝郭荣立遗诏由你辅政。郭荣虽犹豫，最终同意。\n你辅佐幼主柴宗训，后周朝局稳定，你成为一代贤相，与钱弘俶合力保江南太平。');
+                } else if (zhaoPath === 'visit_feng') {
+                    if (optionId === 1) setEnding('北宋开国', '你筹备陈桥兵变，黄袍加身建立北宋，终结五代乱世。\n你杯酒释兵权，善待功臣，成为一代明君。');
+                    else if (optionId === 2) setEnding('太平盛世', '你请冯道起草檄文，为兵变正名。檄文一出，天下归心，你名正言顺登基称帝。\n冯道赞你："师出有名，天下可定。"北宋建立后，你重用文臣，开创太平盛世。');
+                    else if (optionId === 3) setEnding('忠臣辅政', '你赠冯道重金，求其继续辅佐后周。冯道感其诚，尽心辅佐幼主。\n后周延续数十年，你成为一代忠臣名将，与钱弘俶合力保天下太平。');
                 }
             }
         }
@@ -1467,98 +1432,77 @@
                 if (optionId === 1) { // 继续北伐
                     stats.tili -= 20;
                     stats.bingli += 15;
-                    const story = `你拒绝班师，强撑病体继续指挥北伐，后周大军接连攻克数城，兵锋直指幽州。
-但你的身体愈发虚弱，太医多次警告"若不休养，恐有性命之忧"；
-赵匡胤见你病重，暗中联络石守信等将领，后周军心动摇。`;
+                    const story = '你拒绝班师，强撑病体继续指挥北伐，后周大军接连攻克数城，兵锋直指幽州。\n但你的身体愈发虚弱，太医多次警告"若不休养，恐有性命之忧"；\n赵匡胤见你病重，暗中联络石守信等将领，后周军心动摇。';
                     const tip = '【剧情提示】北伐即将成功，但你的身体已到极限，需做出最终抉择。';
-
-                    typeWriter('story-text', story, () => {
-                        typeWriter('story-tip', tip, () => {
-                            updateOptions([
-                                '继续北伐，攻克幽州（结局）',
-                                '传位给柴宗训，命赵匡胤辅政（民心+10，体力+5）',
-                                '与契丹议和，班师回朝休养（体力+15，兵力-5，民心+5）'
-                            ]);
+                    typeWriter('story-text', story, function() {
+                        typeWriter('story-tip', tip, function() {
+                            updateOptions(['继续北伐，攻克幽州（结局）', '传位给柴宗训，命赵匡胤辅政（民心+10，体力+5）', '与契丹议和，班师回朝休养（体力+15，兵力-5，民心+5）']);
                         });
                     });
+                    guoPath = 'north';
                     storyStage = 2;
                 } else if (optionId === 2) { // 班师休养
                     stats.tili += 10;
                     stats.bingli -= 5;
                     stats.minxin += 5;
-                    const story = `你听从太医建议，班师回开封休养，命赵匡胤镇守瓦桥关。
-休养期间，你整顿内政，改革税制，后周国力大增。但赵匡胤在边关威望日盛，隐隐有尾大不掉之势。
-钱弘俶派使者前来，愿与后周永结盟好。`;
+                    const story = '你听从太医建议，班师回开封休养，命赵匡胤镇守瓦桥关。\n休养期间，你整顿内政，改革税制，后周国力大增。但赵匡胤在边关威望日盛，隐隐有尾大不掉之势。\n钱弘俶派使者前来，愿与后周永结盟好。';
                     const tip = '【剧情提示】身体渐愈，但赵匡胤已成心腹大患。';
-
-                    typeWriter('story-text', story, () => {
-                        typeWriter('story-tip', tip, () => {
-                            updateOptions([
-                                '削夺赵匡胤兵权（结局）',
-                                '再次北伐，御驾亲征（体力-10，兵力+10）',
-                                '立柴宗训为太子，稳固朝局（民心+15）'
-                            ]);
+                    typeWriter('story-text', story, function() {
+                        typeWriter('story-tip', tip, function() {
+                            updateOptions(['削夺赵匡胤兵权（结局）', '再次北伐，御驾亲征（体力-10，兵力+10）', '立柴宗训为太子，稳固朝局（民心+15）']);
                         });
                     });
+                    guoPath = 'rest';
                     storyStage = 2;
                 } else if (optionId === 3) { // 结盟吴越
                     stats.minxin += 10;
                     stats.bingli += 5;
-                    const story = `你接见吴越使者，答应结盟条件。钱弘俶派三万水师助你北伐，契丹腹背受敌，节节败退。
-但你的身体每况愈下，赵匡胤在军中说："陛下若有不测，我必保后周江山。"
-你心知，这"保"字，意味深长。`;
+                    const story = '你接见吴越使者，答应结盟条件。钱弘俶派三万水师助你北伐，契丹腹背受敌，节节败退。\n但你的身体每况愈下，赵匡胤在军中说："陛下若有不测，我必保后周江山。"\n你心知，这"保"字，意味深长。';
                     const tip = '【剧情提示】吴越结盟助你北伐，但赵匡胤的忠心存疑。';
-
-                    typeWriter('story-text', story, () => {
-                        typeWriter('story-tip', tip, () => {
-                            updateOptions([
-                                '托孤赵匡胤，继续北伐（结局）',
-                                '立遗诏，由范质辅政（民心+10，体力-5）',
-                                '禅位赵匡胤，求保后周百姓（结局）'
-                            ]);
+                    typeWriter('story-text', story, function() {
+                        typeWriter('story-tip', tip, function() {
+                            updateOptions(['托孤赵匡胤，继续北伐（结局）', '立遗诏，由范质辅政（民心+10，体力-5）', '禅位赵匡胤，求保后周百姓（结局）']);
                         });
                     });
+                    guoPath = 'ally_wuyue';
                     storyStage = 2;
                 } else if (optionId === 4) { // 试探赵匡胤
                     stats.tili -= 5;
                     stats.bingli += 5;
-                    const story = `你屏退左右，单独召见赵匡胤，直言问："朕若归天，你会辅佐幼主，还是取而代之？"
-赵匡胤跪地叩首："臣愿以死效忠后周，若有二心，天诛地灭！"
-但你从其眼神中看出迟疑，心知乱世之中，誓言未必可信。`;
+                    const story = '你屏退左右，单独召见赵匡胤，直言问："朕若归天，你会辅佐幼主，还是取而代之？"\n赵匡胤跪地叩首："臣愿以死效忠后周，若有二心，天诛地灭！"\n但你从其眼神中看出迟疑，心知乱世之中，誓言未必可信。';
                     const tip = '【剧情提示】赵匡胤忠心存疑，需提前布局，要么削其兵权，要么委以重任。';
-
-                    typeWriter('story-text', story, () => {
-                        typeWriter('story-tip', tip, () => {
-                            updateOptions([
-                                '削夺赵匡胤兵权（兵力-10，民心+5）',
-                                '升赵匡胤为兵马大元帅（兵力+15，民心-5）',
-                                '命赵匡胤写下血书，立誓效忠（民心+10，体力-5）'
-                            ]);
+                    typeWriter('story-text', story, function() {
+                        typeWriter('story-tip', tip, function() {
+                            updateOptions(['削夺赵匡胤兵权（兵力-10，民心+5）', '升赵匡胤为兵马大元帅（兵力+15，民心-5）', '命赵匡胤写下血书，立誓效忠（民心+10，体力-5）']);
                         });
                     });
+                    guoPath = 'test';
                     storyStage = 2;
                 }
             }
             else if (storyStage === 2) {
-                if (optionId === 1) {
-                    setEnding('北伐功成', `你继续北伐，攻克幽州，收复燕云十六州，一统北方。但班师途中，你病逝于瓦桥关，年仅39岁。
-后周百姓痛哭流涕，称你为"五代第一明君"。虽未能亲眼见太平，但你的功绩永载史册。`);
-                } else if (optionId === 2) {
-                    setEnding('削权固位', `你削夺赵匡胤兵权，改任文官。赵匡胤心怀不满，却隐忍不发。
-你在位十年，励精图治，后周国力达到顶峰，百姓安居乐业，真正迎来了"太平年"。
-你病逝后，柴宗训顺利继位，后周延续百年，成为五代中最长命的王朝。`);
-                } else if (optionId === 3) {
-                    setEnding('托孤憾事', `你托孤赵匡胤，让其辅佐柴宗训。但你病逝后，赵匡胤发动陈桥兵变，黄袍加身。
-虽建立北宋，一统天下，但你毕生心血，终究为他人做了嫁衣，成为乱世一大憾事。`);
-                } else if (optionId === 4) {
-                    setEnding('禅位太平', `你禅位给赵匡胤，只求他保后周百姓太平。赵匡胤应允，登基后励精图治，一统天下。
-你隐居洛阳，安享晚年，见天下太平，叹曰："江山易主，百姓安乐，足矣。"`);
+                if (guoPath === 'north') {
+                    if (optionId === 1) setEnding('北伐功成', '你继续北伐，攻克幽州，收复燕云十六州，一统北方。但班师途中，你病逝于瓦桥关，年仅39岁。\n后周百姓痛哭流涕，称你为"五代第一明君"。虽未能亲眼见太平，但你的功绩永载史册。');
+                    else if (optionId === 2) setEnding('托孤憾事', '你传位给柴宗训，命赵匡胤辅政。但你病逝后，赵匡胤发动陈桥兵变，黄袍加身。\n虽建立北宋，一统天下，但你毕生心血，终究为他人做了嫁衣，成为乱世一大憾事。');
+                    else if (optionId === 3) setEnding('议和太平', '你与契丹议和，班师回朝休养。虽未收复幽云，但后周休养生息，国力渐强。\n你在位多年，励精图治，百姓安居乐业，真正迎来了"太平年"。');
+                } else if (guoPath === 'rest') {
+                    if (optionId === 1) setEnding('削权固位', '你削夺赵匡胤兵权，改任文官。赵匡胤心怀不满，却隐忍不发。\n你在位十年，励精图治，后周国力达到顶峰，百姓安居乐业。你病逝后，柴宗训顺利继位，后周延续百年。');
+                    else if (optionId === 2) setEnding('北伐功成', '你再次北伐，御驾亲征。此次准备充分，一举攻克幽州，收复燕云十六州。\n你班师回朝，万民拥戴，后周成为中原最强盛的王朝。');
+                    else if (optionId === 3) setEnding('托孤憾事', '你立柴宗训为太子，稳固朝局。但你病逝后，幼主登基，赵匡胤趁机兵变。\n后周灭亡，北宋建立，你毕生心血为他人做了嫁衣。');
+                } else if (guoPath === 'ally_wuyue') {
+                    if (optionId === 1) setEnding('托孤憾事', '你托孤赵匡胤，让其辅佐柴宗训。但你病逝后，赵匡胤发动陈桥兵变，黄袍加身。\n吴越钱弘俶闻讯叹息，幸得赵匡胤信守承诺，江南得保太平。');
+                    else if (optionId === 2) setEnding('范质辅政', '你立遗诏由范质辅政。范质忠心耿耿，辅佐幼主稳定朝局。\n后周延续数十年，虽未统一天下，但百姓安居乐业，中原得享太平。');
+                    else if (optionId === 3) setEnding('禅位太平', '你禅位给赵匡胤，只求他保后周百姓太平。赵匡胤应允，登基后励精图治，一统天下。\n你隐居洛阳，安享晚年，见天下平安，叹曰："江山易主，百姓安乐，足矣。"');
+                } else if (guoPath === 'test') {
+                    if (optionId === 1) setEnding('削权固位', '你削夺赵匡胤兵权。赵匡胤虽不满，却隐忍不发。\n你在位多年，励精图治，后周国力强盛，百姓安居乐业，真正迎来了"太平年"。');
+                    else if (optionId === 2) setEnding('托孤憾事', '你升赵匡胤为兵马大元帅，委以重任。但你病逝后，赵匡胤权势过大，发动陈桥兵变。\n后周灭亡，你毕生心血为他人做了嫁衣。');
+                    else if (optionId === 3) setEnding('禅位太平', '你命赵匡胤写下血书，立誓效忠。赵匡胤的血书果然困住了他，他终生未反，尽心辅佐幼主。\n后周延续百年，天下太平，你被后世尊为"五代第一明君"。');
                 }
             }
-        }
-
-        // 检查结局触发条件
+        }        // 检查结局触发条件
         function checkEnding() {
+            // 只有stage 3（最终决策阶段）才允许数值自动触发结局
+            if (storyStage < 3) return false;
             // 钱弘俶结局条件
             if (currentLord === 'qian') {
                 if (stats.minxin >= 100) {
@@ -1616,6 +1560,9 @@
             storyStage = 1;
             isTyping = false;
             qianPath = '';
+            qianSubPath = '';
+            guoPath = '';
+            zhaoPath = '';
             switchPage('start-page');
         }
     </script>

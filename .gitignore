@@ -15,3 +15,11 @@ Desktop.ini
 # 临时文件
 *.log
 *.tmp
+
+# 开发笔记/调试记录
+剧情分支debug记录.md
+旧开发总结.md
+
+# 临时修复脚本
+fix_*.py
+check_braces.py
